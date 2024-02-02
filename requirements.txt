@@ -1,0 +1,8 @@
+matplotlib
+pandas
+tqdm
+matplotlib
+seg-metrics
+pydicom
+numpy
+scikit-image
