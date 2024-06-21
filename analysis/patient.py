@@ -21,7 +21,7 @@ class Patient:
 			'msd'
 		]
 
-		self.volume_groundtruth = None
+		self.volume_groundtruth = dict()
 
 		self.find_structures()
 		self.load_image_metadata()
@@ -118,15 +118,15 @@ class Patient:
 
 	def get_volumes(self, structure: str, rs_file: str) -> dict:
 		""" Calculate volume with DVH methods."""
-		if not self.volume_groundtruth:
-			self.volume_groundtruth = self.structures_groundtruth.get_volume(structure)
+		if not self.volume_groundtruth.get(structure):
+			self.volume_groundtruth[structure] = self.structures_groundtruth.get_volume(structure)
 
 		if not rs_file in self.structures_compare.rs_files:
-			return self.volume_groundtruth
+			return self.volume_groundtruth.get(structure)
 
 		volume = self.structures_compare.get_volume(structure, rs_file)
 
-		return {'absolute': volume, 'difference': volume - self.volume_groundtruth}
+		return {'absolute': volume, 'difference': volume - self.volume_groundtruth.get(structure)}
 
 	@property
 	def common_structures(self) -> list:
