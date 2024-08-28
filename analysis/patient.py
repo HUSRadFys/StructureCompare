@@ -5,6 +5,7 @@ from scipy import ndimage
 from math import sqrt
 import numpy as np
 from tqdm import tqdm
+import multiprocessing
 
 from analysis.structures import Structures
 
@@ -68,6 +69,7 @@ class Patient:
 
 		metrics = dict()
 		print("Looping through contours")
+		# Add Pool here
 		for rs_file in tqdm(self.structures_compare.rs_files):
 			metrics[rs_file] = {'sg': sg.write_metrics(labels=[1], 
 			                              gdth_img=masks['groundtruth'],
@@ -131,4 +133,99 @@ class Patient:
 	@property
 	def common_structures(self) -> list:
 		return self._common_structures
-	
+
+
+'''
+Parallell processing from chat gpt
+
+import pydicom
+from seg_metrics import compute_metrics
+from multiprocessing import Pool, cpu_count
+import os
+
+def process_dicom_file(dicom_path, ground_truth):
+    """
+    Process a single DICOM RT Structure file and compute metrics compared to the ground truth.
+    
+    Parameters:
+    - dicom_path: str, path to the DICOM RT Structure file.
+    - ground_truth: numpy array or appropriate format containing the ground truth segmentation.
+    
+    Returns:
+    - dict with results containing the metrics.
+    """
+    try:
+        # Read DICOM RT Structure file
+        dicom_rt = pydicom.dcmread(dicom_path)
+        
+        # Extract the structure of interest (assuming it's a binary mask in numpy format)
+        # For simplicity, let's assume we extract it as a numpy array called `structure`
+        # This part is highly dependent on how the structure is stored in your DICOM files.
+        # You would need to implement this based on your use case.
+        structure = extract_structure(dicom_rt)  # Implement this function
+        
+        # Compute metrics using seg_metrics
+        metrics = compute_metrics(ground_truth, structure)
+        
+        # Return the result as a dictionary
+        return {os.path.basename(dicom_path): metrics}
+    except Exception as e:
+        print(f"Error processing {dicom_path}: {e}")
+        return {os.path.basename(dicom_path): str(e)}
+
+def extract_structure(dicom_rt):
+    """
+    Extract the structure of interest from the DICOM RT Structure file.
+    
+    Parameters:
+    - dicom_rt: pydicom Dataset object, loaded DICOM RT file.
+    
+    Returns:
+    - numpy array or appropriate format containing the extracted structure.
+    """
+    # Implement the extraction logic based on your specific needs
+    # Example: return dicom_rt.pixel_array  # Just an example
+    pass
+
+def parallel_process_dicom_files(dicom_paths, ground_truth, num_workers=None):
+    """
+    Process multiple DICOM RT Structure files in parallel.
+    
+    Parameters:
+    - dicom_paths: list of str, paths to the DICOM RT Structure files.
+    - ground_truth: numpy array or appropriate format containing the ground truth segmentation.
+    - num_workers: int, number of workers for parallel processing (default is the number of CPUs).
+    
+    Returns:
+    - dict with results containing the metrics for each file.
+    """
+    if num_workers is None:
+        num_workers = cpu_count()  # Use all available CPUs by default
+    
+    # Use multiprocessing Pool to parallelize the processing
+    with Pool(num_workers) as pool:
+        # Use starmap to pass multiple arguments to the function
+        results = pool.starmap(process_dicom_file, [(dicom_path, ground_truth) for dicom_path in dicom_paths])
+    
+    # Combine all results into a single dictionary
+    combined_results = {}
+    for result in results:
+        combined_results.update(result)
+    
+    return combined_results
+
+if __name__ == "__main__":
+    # Example usage
+    dicom_dir = "path/to/dicom/files"  # Replace with the actual path
+    dicom_files = [os.path.join(dicom_dir, f) for f in os.listdir(dicom_dir) if f.endswith('.dcm')]
+    
+    # Load your ground truth segmentation here
+    ground_truth = None  # Replace with the actual ground truth in the correct format
+    
+    # Perform parallel processing and get the results
+    results = parallel_process_dicom_files(dicom_files, ground_truth)
+    
+    # Print or use the results
+    print(results)
+
+'''
