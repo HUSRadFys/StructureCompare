@@ -20,7 +20,14 @@ class Structures:
 		self.makeListOfReferencedImages()
 
 	def loadFile(self):
-		self.files = glob.glob(f"{self.folder}/{self.structureOrigin}/*.dcm")
+		self.files = glob.glob(f"{self.folder}/RS*.dcm")
+		if self.structureOrigin == 'RS_groundtruth':
+			self.files = [k for k in self.files if "GroundTruth" in k]
+		else:
+			self.files = [k for k in self.files if not "GroundTruth" in k]
+
+		print(self.files)
+
 		self.rd_file = glob.glob(f"{self.folder}/RD*.dcm")[0]
 		self.rsDict = { file : pydicom.dcmread(file) for file in self.files }
 	
@@ -33,6 +40,9 @@ class Structures:
 			self.ROIIdxDict[rsFilename] = dict()
 			for ROI in rs.StructureSetROISequence:
 				name = ROI.ROIName.lower()
+				if name == "constrictmusc_pharynx":
+					name = "pharynxconstrict"
+
 				number = ROI.ROINumber
 				self.ROIDict[rsFilename][name] = number
 
@@ -100,6 +110,7 @@ class Structures:
 
 	def get_structures(self, rsFilename=None):
 		if not rsFilename:
+			print(self.rs_files)
 			assert len(self.rs_files) == 1
 			rsFilename = self.rs_files[0]
 
