@@ -14,6 +14,8 @@ class Structures:
 		self.folder = folder
 		self.uids = {}
 		self.volumes = dict()
+		self.z = dict()
+		self.x0y0 = dict()
 		
 		self.loadFile()
 		self.findROINumbers()
@@ -26,9 +28,7 @@ class Structures:
 		else:
 			self.files = [k for k in self.files if not "GroundTruth" in k]
 
-		print(self.files)
-
-		self.rd_file = glob.glob(f"{self.folder}/RD*.dcm")[0]
+		# self.rd_file = glob.glob(f"{self.folder}/RD*.dcm")[0]
 		self.rsDict = { file : pydicom.dcmread(file) for file in self.files }
 	
 	def getRsFilenames(self):
@@ -61,15 +61,16 @@ class Structures:
 		for file in files:
 			with pydicom.dcmread(file, stop_before_pixels=True) as ds:
 				self.uids[ds.SOPInstanceUID] = ds.InstanceNumber - 1 # starts at 1
-
-	def loadStructureMask3D(self, structureName, ds, rsFilename = None):
+				self.z[ds.SOPInstanceUID] = ds.ImagePositionPatient[2]
+				self.x0y0[ds.SOPInstanceUID] = ds.ImagePositionPatient[:2]
+				
+	def loadStructureMask3D(self, structureName, ds, rsFilename = None, allowed_uids = list(), max_z = None):
 		if not rsFilename:
 			rsFilename = list(self.rsDict.keys())[0]
 			
 		rs = self.rsDict[rsFilename]
-		x0, y0 = ds.ImagePositionPatient[0:2]
 		ps = ds.PixelSpacing
-		
+
 		# Might be more than one idxSeq
 		idxROI = self.ROIIdxDict[rsFilename][structureName.lower()]
 
@@ -77,7 +78,14 @@ class Structures:
 
 		for cs in rs.ROIContourSequence[idxROI].ContourSequence:
 			contourRaw = cs.ContourData
-			idx = self.uids[cs.ContourImageSequence[0].ReferencedSOPInstanceUID] - 1
+			uid = cs.ContourImageSequence[0].ReferencedSOPInstanceUID
+			x0, y0 = self.x0y0[uid]
+			z0 = self.z[uid]
+
+			if max_z and z0 < max_z:
+				continue
+
+			idx = self.uids[uid] - 1
 
 			contour = np.reshape(contourRaw, (len(contourRaw) // 3, 3))
 		
@@ -87,7 +95,6 @@ class Structures:
 	
 			r, c = polygon(contour_x, contour_y, mask.shape)
 			mask[r,c,idx] = 1
-			
 		return mask
 
 	def get_roi(self, rsFilename, name):
@@ -110,7 +117,6 @@ class Structures:
 
 	def get_structures(self, rsFilename=None):
 		if not rsFilename:
-			print(self.rs_files)
 			assert len(self.rs_files) == 1
 			rsFilename = self.rs_files[0]
 
