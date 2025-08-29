@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-
 from pprint import pprint
 
 
@@ -33,7 +32,7 @@ def to_excel(metrics: dict, filename: str) -> None:
 					'Center of mass (3D difference) [mm]': metrics.get('center_of_mass_difference', np.nan),
 					'DICE coefficient (3D)': metrics.get('dc', np.nan),
 					'Hausdorff distance (2D) [mm]': metrics.get('hd', np.nan),
-#					'Hausdorff 95 percentile (2D) [mm]': sg and sg['hd95'][0] or np.nan,
+					'Hausdorff 95 percentile (2D) [mm]': metrics.get('hd95', np.nan),
 					'Jaccard index (3D)': metrics.get("jc", np.nan),
 					'Average Symmetric Surface Distance (2D) [mm]': metrics.get("assd", np.nan),
 					"Max Z spinalcord cutoff [mm]": metrics.get("max_z", np.nan),
