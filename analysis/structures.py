@@ -5,7 +5,6 @@ from dicompylercore import dvhcalc
 import glob
 from pprint import pprint
 
-
 class Structures:
 	def __init__(self, folder, structureOrigin):
 		self.structureOrigin = structureOrigin
@@ -25,9 +24,12 @@ class Structures:
 	def loadFile(self):
 		self.files = glob.glob(f"{self.folder}/RS*.dcm")
 		if self.structureOrigin == 'RS_groundtruth':
-			self.files = [k for k in self.files if "GroundTruth" in k]
+			self.files = [k for k in self.files if not "zMTEK" in k]
 		else:
-			self.files = [k for k in self.files if not "GroundTruth" in k]
+			self.files = [k for k in self.files if "zMTEK" in k]
+
+
+		print(f"{self.structureOrigin = }, {self.files = }")
 
 		# self.rd_file = glob.glob(f"{self.folder}/RD*.dcm")[0]
 		self.rsDict = { file : pydicom.dcmread(file) for file in self.files }
