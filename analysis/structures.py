@@ -16,6 +16,8 @@ class Structures:
 		self.z = dict()
 		self.x0y0 = dict()
 		self.frame_of_reference_uid = {'CT': set(), 'RS': set()}
+
+		self.ground_truth_marker = "bkn"
 		
 		self.loadFile()
 		self.findROINumbers()
@@ -24,9 +26,9 @@ class Structures:
 	def loadFile(self):
 		self.files = glob.glob(f"{self.folder}/RS*.dcm")
 		if self.structureOrigin == 'RS_groundtruth':
-			self.files = [k for k in self.files if not "zMTEK" in k]
+			self.files = [k for k in self.files if self.ground_truth_marker in k]
 		else:
-			self.files = [k for k in self.files if "zMTEK" in k]
+			self.files = [k for k in self.files if not self.ground_truth_marker in k]
 
 
 		print(f"{self.structureOrigin = }, {self.files = }")

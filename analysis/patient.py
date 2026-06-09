@@ -9,10 +9,9 @@ from tqdm import tqdm
 from pprint import pprint
 from medpy.metric import binary
 from time import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from analysis.structures import Structures
-
-speedup = False
 
 def find_uids_of_common_structure_length(structure_object, ds):
 	uids = dict()
@@ -65,7 +64,11 @@ class Patient:
 		self.volume_groundtruth = dict()
 
 		self.find_structures()
-		self.load_image_metadata()
+		try:
+			self.load_image_metadata()
+		except:
+			print("Cannot load CT images")
+			self.ds = list()
 		self.max_z = None
 
 	def find_structures(self) -> None:
@@ -77,10 +80,32 @@ class Patient:
 		print("Referenced Frame of References (pred)")
 		pprint(self.structures_compare.frame_of_reference_uid)
 
+		print("Structures in GROUND TRUTH: ")
+		pprint(self.structures_groundtruth.get_structures())
+
 		common_structures = set(self.structures_groundtruth.get_structures())
 
+		mapping = { # -> GT structure name
+			"femur_head_l": "femuralhead_l",
+			"femur_head_r": "femuralhead_r",
+			"femur_lprox": "femuralhead_l",
+			"femur_rprox": "femuralhead_r",
+			"anorectum": "rectum",
+		}
+
+		self.mapped = {k: dict() for k in self.structures_compare.rs_files}
+
 		for rs_file in tqdm(self.structures_compare.rs_files):
-			common_structures &= set(self.structures_compare.get_structures(rs_file))
+
+			print(f"Structures in {rs_file}: ", end="")
+			compare_structures = self.structures_compare.get_structures(rs_file)
+			pprint(compare_structures)
+			
+			# Inverse mapping of ALL structures to obtain original name later
+			for s in compare_structures:
+				self.mapped[rs_file][mapping.get(s, s)] = s
+
+			common_structures &= set(self.mapped[rs_file].keys())
 
 		pprint(list(common_structures))
 
@@ -90,6 +115,7 @@ class Patient:
 		fn = glob.glob(f"{self.folder}/CT*.dcm")[0]
 		self.ds = pydicom.dcmread(fn, stop_before_pixels=True)
 
+	"""
 	def get_masks(self, structure: str) -> dict:
 		mask_groundtruth = self.structures_groundtruth.loadStructureMask3D(structure, self.ds)
 		mask_compare = dict()
@@ -106,6 +132,7 @@ class Patient:
 			assert np.shape(mask_groundtruth) == np.shape(mask_compare[rs_file])
 
 		return {'groundtruth': mask_groundtruth, 'compare': mask_compare}
+	"""
 
 	def build_metrics(self, metrics=None) -> dict:
 		if not metrics:
@@ -127,15 +154,14 @@ class Patient:
 		allowed_uids = list()
 		max_z = None
 		
-		t00 = time()
-
 		if structure == "spinalcord":
 			allowed_uids, max_z = find_uids_of_common_structure_length(self.structures_compare, self.ds)
 			gdth = self.structures_groundtruth.loadStructureMask3D(structure, self.ds, allowed_uids=allowed_uids, max_z = max_z)
 		else:
 			gdth = self.structures_groundtruth.loadStructureMask3D(structure, self.ds)
 
-		spacing = list(self.ds.PixelSpacing) + [self.ds.SliceThickness]
+		spacing = [self.ds.SliceThickness] + list(self.ds.PixelSpacing)[::-1]
+
 		voxel_volume = spacing[0] * spacing[1] * spacing[2] / (10**3) # cc
 
 		metrics = dict()
@@ -143,33 +169,23 @@ class Patient:
 		com_gdth = ndimage.center_of_mass(gdth)
 		mask_vol_gdth = np.sum(gdth) * voxel_volume
 
-		t_dc = t_jc = t_hd = t_assd = t_com = 0
-		t_load = time() - t00
+		print(f"Parsing {self.structures_compare.rs_files = }")
 
 		for rs_file in tqdm(self.structures_compare.rs_files, disable=False):
-			"""
-			if "justering" not in rs_file.lower():
-				continue
-			"""
-
-			t0 = time()
-			pred = self.structures_compare.loadStructureMask3D(structure, self.ds, rs_file, allowed_uids, max_z = max_z)
-			# pred = masks['compare'][rs_file]
+			mapped_structure_name = self.mapped[rs_file][structure]
+			print(f"Using mapped structure name {mapped_structure_name} for {structure} in {rs_file}")
+			pred = self.structures_compare.loadStructureMask3D(mapped_structure_name, self.ds, rs_file, allowed_uids, max_z = max_z)
 			metrics[rs_file] = dict()
 
 			if not np.sum(pred):
+				print("Empty structure file")
 				metrics[rs_file]["dc"] = metrics[rs_file]["jc"] = "EMPTY STRUCTURE FILE"
-			
-			t1 = time()
-			metrics[rs_file]["dc"] = speedup and 1 or binary.dc(gdth, pred)
-			t2 = time()
-			metrics[rs_file]["jc"] = speedup and 1 or binary.jc(gdth, pred)
-			t3 = time()
-			metrics[rs_file]["hd"] = speedup and 1 or binary.hd(gdth, pred, voxelspacing=spacing)
+
+			metrics[rs_file]["dc"] = binary.dc(gdth, pred)
+			metrics[rs_file]["jc"] = binary.jc(gdth, pred)
+			metrics[rs_file]["hd"] = binary.hd(gdth, pred, voxelspacing=spacing)
 			metrics[rs_file]["hd95"] = binary.hd95(gdth, pred, voxelspacing=spacing)
-			t4 = time()
-			metrics[rs_file]["assd"] = speedup and 1 or binary.assd(gdth, pred, voxelspacing=spacing)
-			t5 = time()
+			metrics[rs_file]["assd"] = binary.assd(gdth, pred, voxelspacing=spacing)
 			
 			com_pred = ndimage.center_of_mass(pred)
 			diff_3d = [k1-k2 for k1, k2 in zip(com_pred, com_gdth)]
@@ -182,14 +198,6 @@ class Patient:
 			metrics[rs_file]['center_of_mass_xyz'] = [0,0,0]
 
 			mask_vol_pred = np.sum(pred) * voxel_volume
-			t6 = time()
-
-			t_dc += t2 - t1
-			t_jc += t3 - t2
-			t_hd += t4 - t3
-			t_assd += t5 - t4
-			t_com += t6 - t5
-			t_load += t1 - t0
 
 			metrics[rs_file]['volume_absolute'] = mask_vol_pred
 			metrics[rs_file]['volume_difference'] = mask_vol_pred - mask_vol_gdth
@@ -202,7 +210,6 @@ class Patient:
 				'volume_absolute': mask_vol_gdth
 			}
 		print("Final")
-		print(f"t_load = {t_load:.1f} s; t_jc = {t_jc:.1f} s; t_dc = {t_dc:.1f} s; t_hd = {t_hd:.1f} s; t_assd = {t_assd:.1f} s; t_com = {t_com:.1f} s.")
 		
 		return metrics
 	

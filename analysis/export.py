@@ -20,7 +20,7 @@ def to_excel(metrics: dict, filename: str) -> None:
 					patient = patient_raw
 			
 				df_newrow = pd.DataFrame([{
-					'Patient name': patient,
+					'Patient name': patient_raw,
 					'Is adjusted': is_adjusted,
 					'Doseplan name': doseplan_name,
 					'Structure name': structure,
