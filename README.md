@@ -7,7 +7,7 @@ Verktøy for kvantitativ sammenligning av RT-struktursett (DICOM RS-filer) mot e
 Resultatene skrives til en Excel-fil i langt format med én rad per pasient/struktur/plan, med følgende kolonner:
 
 | Kolonne |
-|---|---|
+|---|
 | DICE coefficient (3D) | 
 | Hausdorff distance (2D) [mm] | 
 | Hausdorff 95 percentile (2D) [mm] | 
