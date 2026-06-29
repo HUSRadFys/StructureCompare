@@ -6,15 +6,17 @@ Verktøy for kvantitativ sammenligning av RT-struktursett (DICOM RS-filer) mot e
 
 Resultatene skrives til en Excel-fil i langt format med én rad per pasient/struktur/plan, med følgende kolonner:
 
-| Kolonne | Beskrivelse |
+| Kolonne |
 |---|---|
-| DICE coefficient (3D) | Volumetrisk overlapp |
-| Hausdorff distance (2D) [mm] | Maksimal overflatedistanse |
-| Hausdorff 95 percentile (2D) [mm] | Robust overflatedistanse |
-| Jaccard index (3D) | Snitt delt på union |
-| Average Symmetric Surface Distance (2D) [mm] | Gjennomsnittlig overflatedistanse |
-| Absolute/Difference volume (3D mask) | Volumsammenligning |
-| Center of mass (3D difference) [mm] | Romlig avvik i tyngdepunkt |
+| DICE coefficient (3D) | 
+| Hausdorff distance (2D) [mm] | 
+| Hausdorff 95 percentile (2D) [mm] | 
+| Jaccard index (3D) |
+| Average Symmetric Surface Distance (2D) [mm] |
+| Absolute/Difference volume (3D mask) | 
+| Center of mass (3D difference) [mm] |
+
+Benytter pakken [medpy](https://loli.github.io/medpy/index.html) til å beregne de ulike målene.
 
 ## Mappestruktur for inndata
 
