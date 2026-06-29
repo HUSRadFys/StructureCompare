@@ -28,7 +28,7 @@ CT-bildefiler (`CT*.dcm`) i samme mappe brukes for pikselstørrelse og koordinat
 
 | Skript | Beskrivelse |
 |---|---|
-| `compare3D.py` | Batch-analyse av en nummerert serie hodesvin-pasienter (`zzART_Head1` … `zzART_Head20`) |
+| `compare3D.py` | Batch-analyse av en nummerert serie testpasienter (`zzART_Head1` … `zzART_Head20`) |
 | `compare3D_mtek.py` | Batch-analyse med glob-mønster (f.eks. MTEK / SyngoTest-data) |
 | `compare3D_proradnor.py` | Enkeltmappe-analyse (Proradnor-datasettet) |
 
